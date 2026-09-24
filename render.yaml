@@ -1,0 +1,14 @@
+# Blueprint de Render: Dashboard → New → Blueprint → elige este repositorio
+services:
+  - type: web
+    name: dj-request
+    runtime: node
+    plan: free
+    buildCommand: "true"
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: DJ_PIN        # tu PIN del panel DJ — Render te lo pide al crear el servicio
+        sync: false
+      - key: DJ_NAME
+        value: DJ Miky

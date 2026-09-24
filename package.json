@@ -1,0 +1,9 @@
+{
+  "name": "dj-request",
+  "version": "1.1.0",
+  "private": true,
+  "description": "El público pide canciones por QR y puede invitarle una cerveza al DJ",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}

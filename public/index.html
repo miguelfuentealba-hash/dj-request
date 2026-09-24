@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0a12">
+<title>Pide tu canción</title>
+<style>
+  :root{
+    --bg:#0b0a12; --card:#16141f; --card2:#1e1b2b; --line:#2c2840;
+    --text:#f4f2ff; --muted:#9b96b5; --accent:#ff3d8b; --accent2:#7c5cff;
+    --ok:#2fd67b; --warn:#ffb020; --beer:#ffc23d;
+  }
+  *{box-sizing:border-box} [hidden]{display:none!important}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:0 16px calc(24px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;
+    background:radial-gradient(120% 60% at 50% -10%,rgba(124,92,255,.35),transparent 60%),var(--bg)}
+  header{padding:28px 0 12px;text-align:center}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .live i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 1.6s infinite}
+  .live.off i{background:#555;box-shadow:none;animation:none}
+  @keyframes pulse{50%{opacity:.35}}
+  h1{margin:6px 0 2px;font-size:30px;letter-spacing:-.02em;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .event{color:var(--muted);margin:0}
+  .now{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line);display:none;text-align:left}
+  .now small{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11px}
+  .now b{display:block;font-size:17px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0}
+  h2{font-size:18px;margin:0 0 12px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,textarea{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:inherit;font-size:16px;outline:none}
+  input:focus,textarea:focus{border-color:var(--accent2)}
+  textarea{resize:none;height:80px}
+  .row{display:flex;gap:10px}.row>div{flex:1;min-width:0}
+  button{font:inherit;cursor:pointer;border:0}
+  .btn{width:100%;margin-top:14px;padding:15px;border-radius:14px;font-weight:700;font-size:17px;color:#fff;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));box-shadow:0 6px 24px rgba(255,61,139,.3)}
+  .btn:disabled{opacity:.5}
+  .closed{text-align:center;color:var(--warn);padding:8px 0;display:none}
+  .beer{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:16px;border-radius:18px;margin:14px 0;
+    background:linear-gradient(135deg,rgba(255,194,61,.18),rgba(255,140,0,.08));border:1px solid rgba(255,194,61,.45);color:var(--text)}
+  .beer .ico{font-size:34px;animation:tilt 2.4s ease-in-out infinite}
+  @keyframes tilt{0%,70%,100%{transform:rotate(0)}80%{transform:rotate(-14deg)}90%{transform:rotate(10deg)}}
+  .beer b{display:block;color:var(--beer);font-size:17px}.beer span{color:var(--muted);font-size:14px}
+  .list{list-style:none;margin:0;padding:0}
+  .item{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .item:first-child{border-top:0}
+  .item .t{flex:1;min-width:0}
+  .item .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .t span{color:var(--muted);font-size:14px}
+  .item.mine{background:linear-gradient(90deg,rgba(124,92,255,.14),transparent);margin:0 -16px;padding:12px 16px}
+  .item.done{opacity:.45}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;vertical-align:1px}
+  .b-new{background:#2c2840;color:var(--muted)} .b-accepted{background:rgba(47,214,123,.16);color:var(--ok)}
+  .b-playing{background:var(--accent);color:#fff} .b-played{background:#222;color:#777} .b-rejected{background:rgba(255,80,80,.15);color:#ff7070}
+  .vote{display:flex;flex-direction:column;align-items:center;min-width:52px;padding:6px 8px;border-radius:12px;background:var(--card2);color:var(--muted);border:1px solid var(--line)}
+  .vote.on{border-color:var(--accent);color:var(--accent)}
+  .vote b{font-size:15px}
+  .empty{color:var(--muted);text-align:center;padding:10px 0}
+  .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,120px);background:#fff;color:#111;
+    padding:12px 18px;border-radius:14px;font-weight:600;transition:transform .3s;max-width:calc(100% - 32px);z-index:20;text-align:center}
+  .toast.show{transform:translate(-50%,0)}
+  /* hoja de propina */
+  .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
+  .sheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:var(--card);border-radius:22px 22px 0 0;
+    padding:10px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .3s;z-index:11;max-height:92vh;overflow:auto}
+  .open .sheet-bg{opacity:1;pointer-events:auto}.open .sheet{transform:none}
+  .grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 12px}
+  .sheet h3{margin:0;font-size:22px;text-align:center}
+  .sheet p.sub{color:var(--muted);text-align:center;margin:4px 0 12px}
+  .pay{display:block;text-align:center;text-decoration:none;padding:15px;border-radius:14px;background:var(--beer);color:#1a1200;font-weight:800;font-size:17px;margin:10px 0}
+  .bank{background:var(--card2);border-radius:14px;padding:12px 14px;margin:10px 0;font-size:15px}
+  .bank div{display:flex;justify-content:space-between;gap:10px;padding:3px 0}.bank div span{color:var(--muted)}
+  .ghost{width:100%;padding:12px;border-radius:12px;background:transparent;border:1px solid var(--line);color:var(--text);font-weight:600;margin-top:6px}
+  .sep{text-align:center;color:var(--muted);font-size:13px;margin:16px 0 0}
+  /* buscador */
+  .search{position:relative}
+  .sug{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:5;background:var(--card2);border:1px solid var(--accent2);border-radius:14px;
+    overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.55);display:none;max-height:340px;overflow-y:auto}
+  .sug.show{display:block}
+  .sug button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;background:none;color:var(--text);text-align:left;border-top:1px solid var(--line)}
+  .sug button:first-child{border-top:0}
+  .sug button:hover,.sug button.hl{background:rgba(124,92,255,.18)}
+  .sug img,.art{width:40px;height:40px;border-radius:8px;flex:none;object-fit:cover;background:var(--line)}
+  .sug .tx{min-width:0}.sug b,.sug span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sug span{color:var(--muted);font-size:14px}
+  .sug .msg{padding:12px;color:var(--muted);font-size:14px;text-align:center}
+  .picked{display:none;align-items:center;gap:10px;margin-top:8px;padding:8px;border-radius:12px;background:rgba(124,92,255,.12);font-size:14px}
+  .picked.show{display:flex}.picked span{flex:1;color:var(--muted)}.picked button{background:none;color:var(--muted);font-size:18px;padding:0 6px}
+  footer{text-align:center;color:#4d4866;font-size:12px;padding:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="live" id="live"><i></i><span>En vivo</span></div>
+  <h1 id="dj">DJ</h1>
+  <p class="event" id="event"></p>
+  <div class="now" id="now"><small>▶ Sonando ahora</small><b id="nowT"></b></div>
+</header>
+
+<form class="card" id="form" autocomplete="off">
+  <h2>🎵 Pide tu canción</h2>
+  <label for="title">Canción *</label>
+  <div class="search">
+    <input id="title" maxlength="100" placeholder="🔍 Busca: Tren al sur" required autocomplete="off" enterkeyhint="search"
+      role="combobox" aria-autocomplete="list" aria-controls="sug" aria-expanded="false">
+    <div class="sug" id="sug" role="listbox"></div>
+  </div>
+  <div class="picked" id="picked"><img class="art" id="pickedArt" alt=""><span>Encontrada en el catálogo ✓</span><button type="button" id="unpick" aria-label="Quitar">×</button></div>
+  <label for="artist">Artista</label>
+  <input id="artist" maxlength="80" placeholder="Ej: Los Prisioneros">
+  <div class="row">
+    <div><label for="name">Tu nombre</label><input id="name" maxlength="40" placeholder="Opcional"></div>
+  </div>
+  <label for="note">Dedicatoria o mensaje</label>
+  <textarea id="note" maxlength="200" placeholder="Opcional — ¡es el cumpleaños de la Cami!"></textarea>
+  <button class="btn" id="send" type="submit">Enviar pedido</button>
+  <div class="closed" id="closed">⏸ Los pedidos están cerrados por ahora</div>
+</form>
+
+<button class="beer" id="beerBtn" hidden>
+  <div class="ico">🍺</div>
+  <div><b>Invítale una cerveza al DJ</b><span>Si la música te está gustando, apoya con una propina</span></div>
+</button>
+
+<section class="card">
+  <h2>🔥 Pedidos de la noche</h2>
+  <ul class="list" id="list"></ul>
+  <p class="sep">Toca 🔥 para votar por las canciones que quieres escuchar</p>
+</section>
+<footer>DJ Request</footer>
+
+<div id="sheetWrap">
+  <div class="sheet-bg" id="sheetBg"></div>
+  <div class="sheet" role="dialog" aria-label="Invitar una cerveza">
+    <div class="grab"></div>
+    <h3>🍺 Invítame una cerveza</h3>
+    <p class="sub" id="tipSub">¡Gracias por el apoyo!</p>
+    <a class="pay" id="payLink" target="_blank" rel="noopener" hidden></a>
+    <div class="bank" id="bank" hidden></div>
+    <button class="ghost" id="copyBank" hidden>📋 Copiar datos de transferencia</button>
+    <p class="sep">¿Ya la enviaste? Avísale al DJ:</p>
+    <label for="tipName">Tu nombre</label>
+    <input id="tipName" maxlength="40" placeholder="Opcional">
+    <label for="tipMsg">Mensaje</label>
+    <input id="tipMsg" maxlength="160" placeholder="¡Salud! 🍻">
+    <button class="btn" id="tipDone" style="background:var(--beer);color:#1a1200;box-shadow:none">Ya te la envié 🍻</button>
+    <button class="ghost" id="tipClose">Cerrar</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.getElementById(s);
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+let clientId = store.get('djr-client');
+if (!clientId) { clientId = Math.random().toString(36).slice(2) + Date.now().toString(36); store.set('djr-client', clientId); }
+let mine = new Set(store.get('djr-mine', []));
+let voted = new Set(store.get('djr-voted', []));
+let S = null;
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3200); }
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+async function post(url, data) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clientId, ...data }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Error de conexión');
+  return j;
+}
+
+const LABEL = { new: 'Pendiente', accepted: 'En la lista', playing: 'Sonando', played: 'Ya sonó', rejected: 'No esta vez' };
+const ORDER = { playing: 0, accepted: 1, new: 2, played: 3, rejected: 4 };
+
+function render() {
+  $('dj').textContent = S.djName || 'DJ';
+  $('event').textContent = S.eventName || '';
+  document.title = 'Pide tu canción · ' + (S.djName || 'DJ');
+  $('live').classList.toggle('off', !S.open);
+  $('live').querySelector('span').textContent = S.open ? 'Pedidos abiertos' : 'Pedidos cerrados';
+  $('send').hidden = !S.open; $('closed').style.display = S.open ? 'none' : 'block';
+
+  const playing = S.requests.find((r) => r.status === 'playing');
+  $('now').style.display = playing ? 'block' : 'none';
+  if (playing) $('nowT').textContent = playing.title + (playing.artist ? ' — ' + playing.artist : '');
+
+  const tip = S.tip || {};
+  $('beerBtn').hidden = !(tip.url || tip.bank);
+
+  const list = $('list'); list.textContent = '';
+  const items = S.requests
+    .filter((r) => r.status !== 'rejected' || mine.has(r.id))
+    .sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.votes - a.votes || a.ts - b.ts);
+  if (!items.length) list.append(el('li', 'empty', 'Todavía no hay pedidos. ¡Sé el primero!'));
+  for (const r of items) {
+    const li = el('li', 'item' + (mine.has(r.id) ? ' mine' : '') + (['played', 'rejected'].includes(r.status) ? ' done' : ''));
+    if (r.art) { const im = el('img', 'art'); im.src = r.art; im.alt = ''; im.loading = 'lazy'; li.append(im); }
+    const t = el('div', 't');
+    const b = el('b', null, r.title);
+    t.append(b);
+    const sub = el('span', null, (r.artist || '') + (r.name && r.name !== 'DJ' ? (r.artist ? ' · ' : '') + 'pedida por ' + r.name : ''));
+    t.append(sub);
+    const badges = el('div');
+    badges.append(el('span', 'badge b-' + r.status, LABEL[r.status]));
+    if (mine.has(r.id)) badges.append(el('span', 'badge b-new', 'Tu pedido'));
+    if (r.tipped) badges.append(el('span', 'badge', '🍺'));
+    t.append(badges);
+    const v = el('button', 'vote' + (voted.has(r.id) || mine.has(r.id) ? ' on' : ''));
+    v.append(el('span', null, '🔥'), el('b', null, r.votes));
+    v.disabled = ['played', 'rejected'].includes(r.status);
+    v.onclick = () => vote(r.id);
+    li.append(t, v);
+    list.append(li);
+  }
+}
+
+async function vote(id) {
+  if (mine.has(id)) return toast('Es tu propio pedido 😉');
+  try {
+    await post('/api/vote', { id });
+    voted.has(id) ? voted.delete(id) : voted.add(id);
+    store.set('djr-voted', [...voted]);
+    render();
+  } catch (e) { toast(e.message); }
+}
+
+$('name').value = store.get('djr-name', '');
+$('tipName').value = store.get('djr-name', '');
+$('form').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = $('send'); btn.disabled = true;
+  try {
+    const name = $('name').value.trim(); store.set('djr-name', name);
+    const r = await post('/api/request', { title: $('title').value, artist: $('artist').value, name, note: $('note').value, art: pickedArt });
+    if (r.merged) { voted.add(r.id); store.set('djr-voted', [...voted]); toast('¡Alguien ya la pidió! Sumamos tu voto 🔥'); }
+    else { mine.add(r.id); store.set('djr-mine', [...mine]); toast('¡Pedido enviado! 🎶'); }
+    $('title').value = $('artist').value = $('note').value = ''; setPicked(null);
+    if (S) render();
+  } catch (err) { toast(err.message); }
+  btn.disabled = false;
+};
+
+// ---- buscador ----
+let pickedArt = '', sugItems = [], hl = -1, sugTimer = null, sugSeq = 0;
+function setPicked(item) {
+  pickedArt = item && item.art ? item.art : '';
+  $('picked').classList.toggle('show', !!item);
+  if (item) { $('pickedArt').src = item.art || ''; $('pickedArt').style.visibility = item.art ? 'visible' : 'hidden'; }
+}
+function showSug(on) { $('sug').classList.toggle('show', on); $('title').setAttribute('aria-expanded', on); }
+function renderSug(msg) {
+  const box = $('sug'); box.textContent = '';
+  if (msg) { box.append(el('div', 'msg', msg)); return showSug(true); }
+  if (!sugItems.length) return showSug(false);
+  sugItems.forEach((it, i) => {
+    const b = el('button', i === hl ? 'hl' : ''); b.type = 'button'; b.setAttribute('role', 'option');
+    const im = el('img'); im.alt = ''; if (it.art) im.src = it.art;
+    const tx = el('div', 'tx'); tx.append(el('b', null, it.title), el('span', null, it.artist));
+    b.append(im, tx);
+    b.onmousedown = (e) => e.preventDefault(); // que el input no pierda el foco antes del clic
+    b.onclick = () => pick(it);
+    box.append(b);
+  });
+  showSug(true);
+}
+function pick(it) {
+  $('title').value = it.title; $('artist').value = it.artist;
+  setPicked(it); sugItems = []; showSug(false);
+  $('name').value ? $('note').focus() : $('name').focus();
+}
+$('title').addEventListener('input', () => {
+  setPicked(null);
+  clearTimeout(sugTimer);
+  const q = $('title').value.trim();
+  if (q.length < 2) { sugItems = []; return showSug(false); }
+  sugTimer = setTimeout(async () => {
+    const seq = ++sugSeq;
+    try {
+      const j = await (await fetch('/api/search?q=' + encodeURIComponent(q))).json();
+      if (seq !== sugSeq) return; // llegó tarde, ya se escribió otra cosa
+      sugItems = j.items || []; hl = -1;
+      if (!sugItems.length) renderSug(j.offline ? 'Sin conexión al buscador — escríbela a mano 🙂' : 'No la encontré — escríbela a mano y agrega el artista');
+      else renderSug();
+    } catch { if (seq === sugSeq) showSug(false); }
+  }, 280);
+});
+$('title').addEventListener('keydown', (e) => {
+  if (!$('sug').classList.contains('show') || !sugItems.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); hl = (hl + (e.key === 'ArrowDown' ? 1 : -1) + sugItems.length) % sugItems.length; renderSug();
+  } else if (e.key === 'Enter' && hl >= 0) { e.preventDefault(); pick(sugItems[hl]); }
+  else if (e.key === 'Escape') showSug(false);
+});
+$('title').addEventListener('blur', () => setTimeout(() => showSug(false), 150));
+$('title').addEventListener('focus', () => { if (sugItems.length) renderSug(); });
+$('unpick').onclick = () => { setPicked(null); $('title').value = $('artist').value = ''; $('title').focus(); };
+
+// ---- propina ----
+function openSheet(on) { document.body.classList.toggle('open', on); }
+$('beerBtn').onclick = () => {
+  const tip = S.tip || {};
+  $('tipSub').textContent = tip.amount ? 'Sugerido: ' + tip.amount + ' — ¡gracias por el apoyo!' : '¡Gracias por el apoyo!';
+  $('payLink').hidden = !tip.url;
+  if (tip.url) { $('payLink').href = tip.url; $('payLink').textContent = 'Pagar con ' + (tip.label || 'link de pago') + ' →'; }
+  const bank = $('bank'); bank.textContent = '';
+  $('bank').hidden = $('copyBank').hidden = !tip.bank;
+  if (tip.bank) {
+    const rows = [['Nombre', tip.bank.nombre], ['RUT', tip.bank.rut], ['Banco', tip.bank.banco], ['Tipo de cuenta', tip.bank.tipo], ['N° de cuenta', tip.bank.cuenta], ['Email', tip.bank.email]];
+    for (const [k, v] of rows) if (v) { const d = el('div'); d.append(el('span', null, k), el('b', null, v)); bank.append(d); }
+    $('copyBank').onclick = async () => {
+      const txt = rows.filter((r) => r[1]).map((r) => r[0] + ': ' + r[1]).join('\n');
+      try { await navigator.clipboard.writeText(txt); toast('Datos copiados 📋'); }
+      catch { toast('No se pudo copiar — mantén presionado para copiar'); }
+    };
+  }
+  openSheet(true);
+};
+$('sheetBg').onclick = $('tipClose').onclick = () => openSheet(false);
+$('tipDone').onclick = async () => {
+  try {
+    const name = $('tipName').value.trim(); store.set('djr-name', name);
+    await post('/api/tip', { name, message: $('tipMsg').value });
+    openSheet(false); $('tipMsg').value = '';
+    toast('¡Salud! 🍻 El DJ ya recibió tu aviso');
+  } catch (e) { toast(e.message); }
+};
+
+// ---- tiempo real ----
+function connect() {
+  const es = new EventSource('/api/events');
+  es.addEventListener('state', (e) => { S = JSON.parse(e.data); render(); });
+  es.onerror = () => { es.close(); setTimeout(connect, 2000); };
+}
+connect();
+</script>
+</body>
+</html>

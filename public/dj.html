@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0a12">
+<title>Panel DJ</title>
+<style>
+  :root{
+    --bg:#0b0a12; --card:#16141f; --card2:#1e1b2b; --line:#2c2840;
+    --text:#f4f2ff; --muted:#9b96b5; --accent:#ff3d8b; --accent2:#7c5cff;
+    --ok:#2fd67b; --warn:#ffb020; --bad:#ff5a5a; --beer:#ffc23d;
+  }
+  *{box-sizing:border-box} [hidden]{display:none!important}
+  html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  button{font:inherit;cursor:pointer;border:0;color:inherit}
+  input,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--text);font:inherit;outline:none}
+  input:focus{border-color:var(--accent2)}
+  .top{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;background:rgba(11,10,18,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .top h1{font-size:18px;margin:0 auto 0 0;display:flex;align-items:center;gap:8px}
+  .top h1 small{color:var(--muted);font-weight:400;font-size:13px}
+  .pill{padding:8px 14px;border-radius:99px;background:var(--card2);border:1px solid var(--line);font-weight:600;font-size:14px;white-space:nowrap}
+  .pill:hover{border-color:var(--accent2)}
+  .switch{display:flex;align-items:center;gap:8px;font-weight:700}
+  .switch.on{color:var(--ok);border-color:rgba(47,214,123,.5)} .switch.off{color:var(--warn);border-color:rgba(255,176,32,.5)}
+  .switch i{width:9px;height:9px;border-radius:50%;background:currentColor}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;padding:16px;max-width:1300px;margin:0 auto}
+  @media (max-width:860px){main{grid-template-columns:1fr}}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .tab{padding:8px 12px;border-radius:10px;background:var(--card);border:1px solid var(--line);color:var(--muted);font-weight:600}
+  .tab.on{color:var(--text);border-color:var(--accent);background:rgba(255,61,139,.1)}
+  .tab b{margin-left:4px;color:var(--accent)}
+  .req{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:8px;transition:border-color .3s,background .3s}
+  .req.fresh{border-color:var(--accent);background:rgba(255,61,139,.08)}
+  .req.playing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .votes{text-align:center;font-size:22px;font-weight:800;line-height:1}
+  .votes small{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:3px}
+  .info b{font-size:17px}
+  .info .art{float:left;width:44px;height:44px;border-radius:8px;margin-right:10px;object-fit:cover}
+  .info .a{color:var(--muted)}
+  .info .meta{font-size:13px;color:var(--muted);margin-top:3px}
+  .info .note{margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--card2);font-size:14px}
+  .tipb{color:var(--beer);font-weight:700}
+  .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .act{padding:9px 12px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font-weight:700;font-size:14px;white-space:nowrap}
+  .act.ok{color:var(--ok)} .act.play{background:var(--accent);border-color:var(--accent);color:#fff} .act.bad{color:var(--bad)} .act.mut{color:var(--muted)}
+  @media (max-width:560px){.req{grid-template-columns:44px minmax(0,1fr)}.acts{grid-column:1/-1;justify-content:stretch}.act{flex:1}}
+  .empty{color:var(--muted);text-align:center;padding:30px 0}
+  aside .box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  aside h3{margin:0 0 10px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .nowp{font-size:18px;font-weight:700}
+  #qrMini{background:#fff;border-radius:10px;padding:10px;width:fit-content;margin:0 auto}
+  #qrMini img,#qrMini canvas{display:block;width:170px;height:170px}
+  .url{font-size:13px;color:var(--muted);text-align:center;word-break:break-all;margin-top:8px}
+  .tipItem{padding:8px 0;border-top:1px solid var(--line);font-size:14px}.tipItem:first-of-type{border-top:0}
+  .tipItem small{color:var(--muted)}
+  .addForm{display:flex;gap:6px}.addForm input{flex:1;min-width:0}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px}
+  /* modales */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+  .modal.show{display:flex}
+  .dialog{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;width:100%;max-width:520px;max-height:90vh;overflow:auto}
+  .dialog h2{margin:0 0 12px}
+  .dialog label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  .dialog fieldset{border:1px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin:14px 0 0}
+  .dialog legend{padding:0 6px;color:var(--beer);font-weight:700}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+  .primary{width:100%;padding:13px;border-radius:12px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;font-weight:800;margin-top:16px}
+  .row{display:flex;gap:8px;margin-top:10px}.row .act{flex:1}
+  .pin input{font-size:28px;text-align:center;letter-spacing:.4em}
+  .err{color:var(--bad);text-align:center;min-height:20px;margin-top:8px}
+  .toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:30;max-width:340px}
+  .toast div{background:#fff;color:#111;padding:12px 16px;border-radius:12px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.4);animation:in .3s}
+  .toast div.beer{background:var(--beer)}
+  @keyframes in{from{transform:translateY(20px);opacity:0}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>🎧 <span id="djName">Panel DJ</span> <small id="evName"></small></h1>
+  <button class="pill switch" id="openBtn"><i></i><span></span></button>
+  <button class="pill" id="soundBtn" title="Sonido al llegar un pedido">🔔</button>
+  <a class="pill" href="/qr" target="_blank" style="color:inherit;text-decoration:none">📺 Pantalla QR</a>
+  <button class="pill" id="setBtn">⚙️ Ajustes</button>
+</div>
+
+<main>
+  <section>
+    <div class="tabs" id="tabs"></div>
+    <div id="list"></div>
+  </section>
+  <aside>
+    <div class="box"><h3>▶ Sonando ahora</h3><div class="nowp" id="nowp">—</div></div>
+    <div class="box"><h3>QR para el público</h3><div id="qrMini"></div><div class="url" id="joinUrl"></div></div>
+    <div class="box">
+      <h3>🍺 Cervezas <span id="tipCount"></span></h3>
+      <div id="tips"></div>
+      <div class="hint">Avisos que manda el público. Verifica los pagos en tu app del banco.</div>
+    </div>
+    <div class="box">
+      <h3>Agregar a la lista</h3>
+      <form class="addForm" id="addForm"><input id="addT" placeholder="Canción — Artista"><button class="act ok">+</button></form>
+    </div>
+  </aside>
+</main>
+
+<div class="modal pin" id="login">
+  <form class="dialog" id="loginForm" style="max-width:340px;text-align:center">
+    <h2>🎧 Panel DJ</h2>
+    <p style="color:var(--muted);margin:0 0 12px">Ingresa el PIN (aparece en la ventana del servidor)</p>
+    <input id="pinIn" type="password" maxlength="64" autocomplete="current-password">
+    <div class="err" id="pinErr"></div>
+    <button class="primary">Entrar</button>
+  </form>
+</div>
+
+<div class="modal" id="settings">
+  <form class="dialog" id="setForm">
+    <h2>⚙️ Ajustes</h2>
+    <div class="grid2">
+      <div><label>Nombre del DJ</label><input name="djName"></div>
+      <div><label>Evento / local</label><input name="eventName" placeholder="Opcional"></div>
+    </div>
+    <label>Pedidos por persona cada 10 min</label><input name="maxPerWindow" type="number" min="1" max="50">
+    <label>URL pública (si usas un túnel a internet)</label>
+    <input name="publicUrl" placeholder="Vacío = red WiFi local">
+    <fieldset>
+      <legend>🍺 Propinas</legend>
+      <div class="grid2">
+        <div><label>Link de pago</label><input name="tipUrl" placeholder="https://link.mercadopago.cl/..."></div>
+        <div><label>Nombre del servicio</label><input name="tipLabel" placeholder="Mercado Pago"></div>
+      </div>
+      <label>Monto sugerido</label><input name="tipAmount" placeholder="Ej: $3.000 (una schop)">
+      <label style="margin-top:14px;color:var(--text)">Datos de transferencia</label>
+      <div class="grid2">
+        <div><label>Nombre</label><input name="bank.nombre"></div>
+        <div><label>RUT</label><input name="bank.rut"></div>
+        <div><label>Banco</label><input name="bank.banco"></div>
+        <div><label>Tipo de cuenta</label><input name="bank.tipo" placeholder="Cuenta RUT / Vista / Corriente"></div>
+        <div><label>N° de cuenta</label><input name="bank.cuenta"></div>
+        <div><label>Email</label><input name="bank.email"></div>
+      </div>
+      <div class="hint">Deja todo vacío si no quieres mostrar el botón de cerveza.</div>
+    </fieldset>
+    <label>Cambiar PIN (mínimo 4 caracteres)</label><input name="pin" type="password" maxlength="64" autocomplete="new-password">
+    <button class="primary">Guardar</button>
+    <div class="row">
+      <button type="button" class="act mut" id="clearPlayed">Limpiar tocadas/rechazadas</button>
+      <button type="button" class="act bad" id="clearAll">Nueva noche (borrar todo)</button>
+    </div>
+    <div class="row"><button type="button" class="act mut" id="setClose">Cancelar</button></div>
+  </form>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/qrcode.min.js"></script>
+<script>
+const $ = (s) => document.getElementById(s);
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+let pin = store.get('djr-pin', '');
+let sound = store.get('djr-sound', true);
+let tab = 'new';
+let S = null, es = null, lastQR = '';
+const fresh = new Set();
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function toast(msg, cls) { const d = el('div', cls, msg); $('toast').append(d); setTimeout(() => d.remove(), 6000); }
+async function api(path, data) {
+  const r = await fetch('/api/dj/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-dj-pin': pin }, body: JSON.stringify(data || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { showLogin(); throw new Error('PIN'); }
+  if (!r.ok) { toast(j.error || 'Error'); throw new Error(j.error); }
+  return j;
+}
+function ago(ts) { const m = Math.round((Date.now() - ts) / 60000); return m < 1 ? 'recién' : m < 60 ? `hace ${m} min` : `hace ${Math.floor(m / 60)} h`; }
+
+// ---- sonido ----
+let ctx;
+function beep(beer) {
+  if (!sound) return;
+  try {
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    const notes = beer ? [784, 988, 1175] : [880, 1320];
+    notes.forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f; o.type = 'sine';
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + i * .12);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + i * .12 + .02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * .12 + .25);
+      o.connect(g).connect(ctx.destination); o.start(ctx.currentTime + i * .12); o.stop(ctx.currentTime + i * .12 + .3);
+    });
+  } catch {}
+}
+function paintSound() { $('soundBtn').textContent = sound ? '🔔' : '🔕'; }
+$('soundBtn').onclick = () => { sound = !sound; store.set('djr-sound', sound); paintSound(); if (sound) beep(); };
+paintSound();
+
+// ---- login ----
+function showLogin() { if (es) es.close(); $('login').classList.add('show'); $('pinIn').focus(); }
+$('loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  pin = $('pinIn').value.trim();
+  const r = await fetch('/api/dj/login', { method: 'POST', headers: { 'x-dj-pin': pin } });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); $('pinErr').textContent = j.error || 'PIN incorrecto'; return; }
+  store.set('djr-pin', pin); $('login').classList.remove('show'); $('pinErr').textContent = ''; connect();
+};
+
+// ---- render ----
+const TABS = [['new', 'Pendientes'], ['accepted', 'En la lista'], ['played', 'Tocadas'], ['rejected', 'Rechazadas'], ['all', 'Todas']];
+function render() {
+  const c = S.config;
+  $('djName').textContent = c.djName || 'Panel DJ';
+  $('evName').textContent = c.eventName || '';
+  const ob = $('openBtn'); ob.className = 'pill switch ' + (c.open ? 'on' : 'off');
+  ob.querySelector('span').textContent = c.open ? 'Pedidos abiertos' : 'Pedidos cerrados';
+
+  const reqs = S.requests;
+  const count = (st) => reqs.filter((r) => st === 'all' || r.status === st || (st === 'accepted' && r.status === 'playing')).length;
+  const tabs = $('tabs'); tabs.textContent = '';
+  for (const [k, label] of TABS) {
+    const b = el('button', 'tab' + (tab === k ? ' on' : ''), label);
+    const n = count(k); if (n) b.append(el('b', null, n));
+    b.onclick = () => { tab = k; render(); };
+    tabs.append(b);
+  }
+  const playing = reqs.find((r) => r.status === 'playing');
+  $('nowp').textContent = playing ? playing.title + (playing.artist ? ' — ' + playing.artist : '') : '—';
+
+  const ORDER = { playing: 0, accepted: 1, new: 2, played: 3, rejected: 4 };
+  const list = $('list'); list.textContent = '';
+  const items = reqs.filter((r) => tab === 'all' || r.status === tab || (tab === 'accepted' && r.status === 'playing'))
+    .sort((a, b) => tab === 'played' ? b.ts - a.ts : ORDER[a.status] - ORDER[b.status] || b.votes - a.votes || a.ts - b.ts);
+  if (!items.length) list.append(el('div', 'empty', tab === 'new' ? 'Sin pedidos pendientes. Muestra el QR al público 📺' : 'Nada por aquí'));
+  for (const r of items) list.append(card(r));
+
+  const tips = $('tips'); tips.textContent = '';
+  $('tipCount').textContent = S.tips.length ? '(' + S.tips.length + ')' : '';
+  if (!S.tips.length) tips.append(el('div', 'hint', 'Todavía nada… ¡sube el volumen! 😄'));
+  for (const t of S.tips.slice().reverse().slice(0, 15)) {
+    const d = el('div', 'tipItem');
+    d.append(el('b', null, '🍺 ' + (t.name || 'Alguien')), el('small', null, ' · ' + ago(t.ts)));
+    if (t.message) d.append(el('div', null, t.message));
+    tips.append(d);
+  }
+
+  if (S.joinUrl !== lastQR) {
+    lastQR = S.joinUrl; $('qrMini').textContent = ''; $('joinUrl').textContent = S.joinUrl;
+    new QRCode($('qrMini'), { text: S.joinUrl, width: 340, height: 340, correctLevel: QRCode.CorrectLevel.M });
+  }
+}
+
+function card(r) {
+  const d = el('div', 'req' + (fresh.has(r.id) ? ' fresh' : '') + (r.status === 'playing' ? ' playing' : ''));
+  const v = el('div', 'votes', r.votes); v.append(el('small', null, r.votes === 1 ? 'voto' : 'votos'));
+  const info = el('div', 'info');
+  if (r.art) { const im = el('img', 'art'); im.src = r.art; im.alt = ''; info.append(im); }
+  info.append(el('b', null, r.title));
+  if (r.artist) info.append(el('span', 'a', ' — ' + r.artist));
+  const meta = el('div', 'meta', (r.name ? r.name : 'Anónimo') + ' · ' + ago(r.ts) + ' ');
+  if (r.tipped) meta.append(el('span', 'tipb', '🍺 invitó cerveza'));
+  info.append(meta);
+  if (r.note) info.append(el('div', 'note', '💬 ' + r.note));
+  const acts = el('div', 'acts');
+  const A = (label, cls, fn, title) => { const b = el('button', 'act ' + cls, label); if (title) b.title = title; b.onclick = fn; acts.append(b); };
+  const set = (status) => () => { fresh.delete(r.id); api('status', { id: r.id, status }).catch(() => {}); };
+  A('📋', 'mut', async () => {
+    try { await navigator.clipboard.writeText(r.title + (r.artist ? ' ' + r.artist : '')); toast('Copiado para buscar en tu biblioteca'); } catch {}
+  }, 'Copiar título y artista');
+  if (r.status === 'new') { A('✓ Aceptar', 'ok', set('accepted')); A('▶', 'play', set('playing'), 'Sonando ahora'); A('✕', 'bad', set('rejected'), 'Rechazar'); }
+  else if (r.status === 'accepted') { A('▶ Sonando', 'play', set('playing')); A('✕', 'bad', set('rejected'), 'Rechazar'); }
+  else if (r.status === 'playing') { A('✓ Terminó', 'ok', set('played')); }
+  else { A('↺ Recuperar', 'mut', set('new')); A('🗑', 'bad', () => api('delete', { id: r.id }).catch(() => {}), 'Borrar'); }
+  d.append(v, info, acts);
+  return d;
+}
+setInterval(() => S && render(), 30000); // refresca los "hace X min"
+// En la nube gratis (Render) el servidor se duerme tras 15 min sin visitas: con el panel abierto lo mantenemos despierto.
+setInterval(() => fetch('/healthz').catch(() => {}), 4 * 60 * 1000);
+
+$('openBtn').onclick = () => api('config', { config: { open: !S.config.open } }).catch(() => {});
+$('addForm').onsubmit = (e) => {
+  e.preventDefault();
+  const [title, ...rest] = $('addT').value.split(/\s+[—-]\s+/);
+  if (!title.trim()) return;
+  api('add', { title, artist: rest.join(' - ') }).then(() => { $('addT').value = ''; tab = 'accepted'; }).catch(() => {});
+};
+
+// ---- ajustes ----
+$('setBtn').onclick = () => {
+  const f = $('setForm'), c = S.config;
+  for (const inp of f.querySelectorAll('input[name]')) {
+    const [a, b] = inp.name.split('.');
+    inp.value = inp.name === 'pin' ? '' : (b ? c[a][b] : c[a]) ?? '';
+  }
+  $('settings').classList.add('show');
+};
+$('setClose').onclick = () => $('settings').classList.remove('show');
+$('setForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const config = { bank: {} };
+  for (const inp of $('setForm').querySelectorAll('input[name]')) {
+    const [a, b] = inp.name.split('.');
+    if (b) config[a][b] = inp.value; else if (a !== 'pin' || inp.value) config[a] = inp.value;
+  }
+  if (config.pin && !/^\S{4,64}$/.test(config.pin)) return toast('El PIN debe tener al menos 4 caracteres, sin espacios');
+  const r = await api('config', { config }).catch(() => null);
+  if (!r) return;
+  if (config.pin) { pin = r.pin; store.set('djr-pin', pin); connect(); }
+  $('settings').classList.remove('show'); toast('Ajustes guardados ✓');
+};
+$('clearPlayed').onclick = () => api('clear', { what: 'played' }).then(() => toast('Listo')).catch(() => {});
+$('clearAll').onclick = () => {
+  if (confirm('¿Borrar TODOS los pedidos y propinas para empezar una noche nueva?')) api('clear', { what: 'all' }).then(() => { $('settings').classList.remove('show'); toast('Noche nueva 🎉'); }).catch(() => {});
+};
+
+// ---- tiempo real ----
+function connect() {
+  if (es) es.close();
+  es = new EventSource('/api/events?role=dj&pin=' + encodeURIComponent(pin));
+  es.addEventListener('state', (e) => { S = JSON.parse(e.data); render(); });
+  es.addEventListener('new-request', (e) => {
+    const d = JSON.parse(e.data);
+    const r = S && S.requests.slice().reverse().find((x) => x.title === d.title);
+    if (r) { fresh.add(r.id); setTimeout(() => { fresh.delete(r.id); S && render(); }, 15000); render(); }
+    toast('🎵 ' + d.title + (d.artist ? ' — ' + d.artist : '') + (d.name ? ' (' + d.name + ')' : '')); beep();
+  });
+  es.addEventListener('new-tip', (e) => {
+    const t = JSON.parse(e.data);
+    toast('🍺 ¡' + (t.name || 'Alguien') + ' te invitó una cerveza!' + (t.message ? ' “' + t.message + '”' : ''), 'beer'); beep(true);
+  });
+  es.onerror = async () => {
+    es.close();
+    const r = await fetch('/api/dj/login', { method: 'POST', headers: { 'x-dj-pin': pin } }).catch(() => null);
+    if (r && r.status === 401) showLogin(); else setTimeout(connect, 2000);
+  };
+}
+pin ? connect() : showLogin();
+</script>
+</body>
+</html>
