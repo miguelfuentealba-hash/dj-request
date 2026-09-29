@@ -162,8 +162,8 @@ async function searchSongs(q) {
 }
 
 // ---------- HTTP ----------
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
-const ROUTES = { '/': 'index.html', '/dj': 'dj.html', '/qr': 'qr.html', '/qrcode.min.js': 'qrcode.min.js' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
+const ROUTES = { '/': 'index.html', '/dj': 'dj.html', '/qr': 'qr.html', '/qrcode.min.js': 'qrcode.min.js', '/logo.jpg': 'logo.jpg', '/icon.jpg': 'icon.jpg' };
 
 function json(res, code, obj) {
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -201,7 +201,7 @@ const server = http.createServer(async (req, res) => {
     const f = path.join(PUB, ROUTES[p]);
     return fs.readFile(f, (e, d) => {
       if (e) { res.writeHead(404); return res.end(); }
-      res.writeHead(200, { 'Content-Type': MIME[path.extname(f)], 'Cache-Control': 'no-cache' });
+      res.writeHead(200, { 'Content-Type': MIME[path.extname(f)], 'Cache-Control': f.endsWith('.jpg') ? 'public, max-age=86400' : 'no-cache' });
       res.end(d);
     });
   }
