@@ -53,14 +53,10 @@
   .item .t{flex:1;min-width:0}
   .item .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .item .t span{color:var(--muted);font-size:14px}
-  .item.mine{background:linear-gradient(90deg,rgba(124,92,255,.14),transparent);margin:0 -16px;padding:12px 16px}
   .item.done{opacity:.45}
   .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px;vertical-align:1px}
   .b-new{background:#2c2840;color:var(--muted)} .b-accepted{background:rgba(47,214,123,.16);color:var(--ok)}
   .b-playing{background:var(--accent);color:#fff} .b-played{background:#222;color:#777} .b-rejected{background:rgba(255,80,80,.15);color:#ff7070}
-  .vote{display:flex;flex-direction:column;align-items:center;min-width:52px;padding:6px 8px;border-radius:12px;background:var(--card2);color:var(--muted);border:1px solid var(--line)}
-  .vote.on{border-color:var(--accent);color:var(--accent)}
-  .vote b{font-size:15px}
   .empty{color:var(--muted);text-align:center;padding:10px 0}
   .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,120px);background:#fff;color:#111;
     padding:12px 18px;border-radius:14px;font-weight:600;transition:transform .3s;max-width:calc(100% - 32px);z-index:20;text-align:center}
@@ -129,10 +125,9 @@
   <div><b>Invítale una cerveza al DJ</b><span>Si la música te está gustando, apoya con una propina</span></div>
 </button>
 
-<section class="card">
-  <h2>🔥 Pedidos de la noche</h2>
+<section class="card" id="mineCard" hidden>
+  <h2>🎶 Tus pedidos</h2>
   <ul class="list" id="list"></ul>
-  <p class="sep">Toca 🔥 para votar por las canciones que quieres escuchar</p>
 </section>
 <footer>DJ Request</footer>
 
@@ -162,8 +157,6 @@ const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? 
                 set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 let clientId = store.get('djr-client');
 if (!clientId) { clientId = Math.random().toString(36).slice(2) + Date.now().toString(36); store.set('djr-client', clientId); }
-let mine = new Set(store.get('djr-mine', []));
-let voted = new Set(store.get('djr-voted', []));
 let S = null;
 
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3200); }
@@ -175,7 +168,7 @@ async function post(url, data) {
   return j;
 }
 
-const LABEL = { new: 'Pendiente', accepted: 'En la lista', playing: 'Sonando', played: 'Ya sonó', rejected: 'No esta vez' };
+const LABEL = { new: 'Enviado al DJ', accepted: 'En la lista del DJ ✓', playing: '¡Sonando ahora! 🔊', played: 'Ya sonó', rejected: 'No se pudo esta vez' };
 const ORDER = { playing: 0, accepted: 1, new: 2, played: 3, rejected: 4 };
 
 function render() {
@@ -186,48 +179,28 @@ function render() {
   $('live').querySelector('span').textContent = S.open ? 'Pedidos abiertos' : 'Pedidos cerrados';
   $('send').hidden = !S.open; $('closed').style.display = S.open ? 'none' : 'block';
 
-  const playing = S.requests.find((r) => r.status === 'playing');
+  const playing = S.playing;
   $('now').style.display = playing ? 'block' : 'none';
   if (playing) $('nowT').textContent = playing.title + (playing.artist ? ' — ' + playing.artist : '');
 
   const tip = S.tip || {};
   $('beerBtn').hidden = !(tip.url || tip.bank);
 
+  // solo los pedidos de esta persona: el público no ve la lista de espera
   const list = $('list'); list.textContent = '';
-  const items = S.requests
-    .filter((r) => r.status !== 'rejected' || mine.has(r.id))
-    .sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.votes - a.votes || a.ts - b.ts);
-  if (!items.length) list.append(el('li', 'empty', 'Todavía no hay pedidos. ¡Sé el primero!'));
+  const items = (S.mine || []).slice().sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.ts - a.ts);
+  $('mineCard').hidden = !items.length;
   for (const r of items) {
-    const li = el('li', 'item' + (mine.has(r.id) ? ' mine' : '') + (['played', 'rejected'].includes(r.status) ? ' done' : ''));
+    const li = el('li', 'item' + (['played', 'rejected'].includes(r.status) ? ' done' : ''));
     if (r.art) { const im = el('img', 'art'); im.src = r.art; im.alt = ''; im.loading = 'lazy'; li.append(im); }
     const t = el('div', 't');
-    const b = el('b', null, r.title);
-    t.append(b);
-    const sub = el('span', null, (r.artist || '') + (r.name && r.name !== 'DJ' ? (r.artist ? ' · ' : '') + 'pedida por ' + r.name : ''));
-    t.append(sub);
+    t.append(el('b', null, r.title), el('span', null, r.artist || ''));
     const badges = el('div');
     badges.append(el('span', 'badge b-' + r.status, LABEL[r.status]));
-    if (mine.has(r.id)) badges.append(el('span', 'badge b-new', 'Tu pedido'));
-    if (r.tipped) badges.append(el('span', 'badge', '🍺'));
     t.append(badges);
-    const v = el('button', 'vote' + (voted.has(r.id) || mine.has(r.id) ? ' on' : ''));
-    v.append(el('span', null, '🔥'), el('b', null, r.votes));
-    v.disabled = ['played', 'rejected'].includes(r.status);
-    v.onclick = () => vote(r.id);
-    li.append(t, v);
+    li.append(t);
     list.append(li);
   }
-}
-
-async function vote(id) {
-  if (mine.has(id)) return toast('Es tu propio pedido 😉');
-  try {
-    await post('/api/vote', { id });
-    voted.has(id) ? voted.delete(id) : voted.add(id);
-    store.set('djr-voted', [...voted]);
-    render();
-  } catch (e) { toast(e.message); }
 }
 
 $('name').value = store.get('djr-name', '');
@@ -238,10 +211,8 @@ $('form').onsubmit = async (e) => {
   try {
     const name = $('name').value.trim(); store.set('djr-name', name);
     const r = await post('/api/request', { title: $('title').value, artist: $('artist').value, name, note: $('note').value, art: pickedArt });
-    if (r.merged) { voted.add(r.id); store.set('djr-voted', [...voted]); toast('¡Alguien ya la pidió! Sumamos tu voto 🔥'); }
-    else { mine.add(r.id); store.set('djr-mine', [...mine]); toast('¡Pedido enviado! 🎶'); }
+    toast(r.merged ? '¡Esa ya estaba pedida! Sumamos tu voto 🔥' : '¡Pedido enviado! 🎶');
     $('title').value = $('artist').value = $('note').value = ''; setPicked(null);
-    if (S) render();
   } catch (err) { toast(err.message); }
   btn.disabled = false;
 };
@@ -333,7 +304,7 @@ $('tipDone').onclick = async () => {
 
 // ---- tiempo real ----
 function connect() {
-  const es = new EventSource('/api/events');
+  const es = new EventSource('/api/events?cid=' + encodeURIComponent(clientId));
   es.addEventListener('state', (e) => { S = JSON.parse(e.data); render(); });
   es.onerror = () => { es.close(); setTimeout(connect, 2000); };
 }
