@@ -88,17 +88,19 @@ const id = () => crypto.randomBytes(6).toString('hex');
 
 function tippers() { return new Set(state.tips.map((t) => t.clientId)); }
 
-function publicSnapshot() {
+// El público NO ve la lista de espera: solo lo que está sonando y SUS propios pedidos
+// (los que pidió o a los que se sumó al pedir una canción ya pedida).
+function publicSnapshot(cid) {
   const c = state.config;
   const hasBank = Object.values(c.bank).some(Boolean);
-  const tipSet = tippers();
+  const playing = state.requests.find((r) => r.status === 'playing');
   return {
     djName: c.djName, eventName: c.eventName, open: c.open,
     tip: { url: c.tipUrl, label: c.tipLabel, amount: c.tipAmount, bank: hasBank ? c.bank : null },
-    requests: state.requests.map((r) => ({
-      id: r.id, title: r.title, artist: r.artist, name: r.name, art: r.art || '', votes: r.voters.length,
-      status: r.status, ts: r.ts, tipped: tipSet.has(r.clientId),
-    })),
+    playing: playing ? { title: playing.title, artist: playing.artist } : null,
+    mine: cid ? state.requests
+      .filter((r) => r.clientId === cid || r.voters.includes(cid))
+      .map((r) => ({ id: r.id, title: r.title, artist: r.artist, art: r.art || '', status: r.status, ts: r.ts })) : [],
   };
 }
 function djSnapshot() {
@@ -113,13 +115,12 @@ function djSnapshot() {
 }
 
 // ---------- SSE ----------
-const clients = new Set(); // {res, dj}
+const clients = new Set(); // {res, dj, cid}
 function send(res, event, data) { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); }
 function broadcast(extra) {
-  const pub = publicSnapshot();
   const dj = djSnapshot();
   for (const c of clients) {
-    send(c.res, 'state', c.dj ? dj : pub);
+    send(c.res, 'state', c.dj ? dj : publicSnapshot(c.cid));
     if (extra && c.dj) send(c.res, extra.event, extra.data);
   }
   save();
@@ -210,9 +211,9 @@ const server = http.createServer(async (req, res) => {
     const dj = url.searchParams.get('role') === 'dj';
     if (dj && !isDJ(req, url, ip)) return json(res, 401, { error: pinLocked(ip) ? 'Demasiados intentos. Espera 10 minutos.' : 'PIN incorrecto' });
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
-    const c = { res, dj };
+    const c = { res, dj, cid: clean(url.searchParams.get('cid'), 40) };
     clients.add(c);
-    send(res, 'state', dj ? djSnapshot() : publicSnapshot());
+    send(res, 'state', dj ? djSnapshot() : publicSnapshot(c.cid));
     req.on('close', () => clients.delete(c));
     return;
   }
@@ -258,14 +259,6 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { id: r.id });
   }
 
-  if (p === '/api/vote') {
-    const r = state.requests.find((x) => x.id === b.id);
-    if (!r) return json(res, 404, { error: 'No existe' });
-    const i = r.voters.indexOf(clientId);
-    if (i === -1) r.voters.push(clientId); else if (r.clientId !== clientId) r.voters.splice(i, 1);
-    broadcast();
-    return json(res, 200, { votes: r.voters.length });
-  }
 
   if (p === '/api/tip') {
     if (!allowed('tip:' + clientId, 5)) return json(res, 429, { error: 'Gracias, ya quedó registrado 🍻' });

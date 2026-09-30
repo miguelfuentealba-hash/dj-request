@@ -14,6 +14,8 @@ App para que el público pida canciones escaneando un QR y pueda invitarte una c
 - Pendientes → ✓ Aceptar / ▶ Sonando / ✕ Rechazar. ▶ marca como "tocada" la canción que estaba sonando.
 - 📋 copia "título artista" para buscarla en rekordbox.
 - Si varias personas piden la misma canción, se juntan en un solo pedido con más votos 🔥.
+- El público **no ve la lista de espera**: cada persona ve solo lo que está sonando y el estado de *sus* pedidos
+  (Enviado al DJ → En la lista del DJ → Sonando ahora → Ya sonó).
 - Aviso con sonido cuando llega un pedido o una cerveza (🔔/🔕 lo apaga).
 - "Pedidos abiertos/cerrados" pausa los pedidos nuevos.
 - Ajustes → "Nueva noche" borra todo.
